@@ -1,0 +1,85 @@
+[package]
+edition = "2024"
+name = "wifi-hello"
+rust-version = "1.88"
+version = "0.1.0"
+
+[[bin]]
+name = "wifi-hello"
+path = "./src/bin/main.rs"
+
+[dependencies]
+esp-hal = { version = "~1.1.0", features = ["defmt", "esp32", "unstable"] }
+
+esp-rtos = { version = "0.3.0", features = [
+  "defmt",
+  "embassy",
+  "esp-alloc",
+  "esp-radio",
+  "esp32",
+] }
+
+defmt = "1.0.1"
+esp-bootloader-esp-idf = { version = "0.5.0", features = ["defmt", "esp32"] }
+
+embassy-net = { version = "0.7.1", features = [
+  "defmt",
+  "dhcpv4",
+  "medium-ethernet",
+  "tcp",
+  "udp",
+  "dns",
+] }
+embedded-io = { version = "0.7.1", features = ["defmt"] }
+embedded-io-async = { version = "0.7.0", features = ["defmt"] }
+esp-alloc = { version = "0.10.0", features = ["defmt"] }
+esp-println = { version = "0.17.0", features = ["defmt-espflash", "esp32"] }
+# for more networking protocol support see https://crates.io/crates/edge-net
+embassy-executor = { version = "0.10.0", features = ["defmt"] }
+embassy-time = { version = "0.5.0", features = ["defmt"] }
+esp-radio = { version = "0.18.0", features = [
+  "defmt",
+  "esp-alloc",
+  "esp32",
+  "unstable",
+  "wifi",
+] }
+smoltcp = { version = "0.14.0", default-features = false, features = [
+  "defmt",
+  "medium-ethernet",
+  "multicast",
+  "proto-dhcpv4",
+  "proto-dns",
+  "proto-ipv4",
+  "socket-dns",
+  "socket-icmp",
+  "socket-raw",
+  "socket-tcp",
+  "socket-udp",
+] }
+
+chrono = { version = "0.4.45", default-features = false, features = ["serde"] }
+critical-section = "1.2.0"
+static_cell = "2.1.1"
+reqwless = { version = "0.13.0", default-features = false, features = [
+  "embedded-tls",
+  "alloc",
+] }
+serde = { version = "1.0", default-features = false, features = ["derive"] }
+heapless = "0.9.3"
+serde-json-core = "0.6.0"
+embedded-hal-bus = "0.3.0"
+embedded-graphics = "0.8.2"
+epd-waveshare = "0.6.0"
+dotenvy_macro = "0.15"
+# For fine tuning these settings, please refer to https://doc.rust-lang.org/cargo/reference/profiles.html
+[profile.dev]
+# The default debug profile is too slow and too big for resource-constrained devices.
+# Always build with some optimizations enabled.
+opt-level = "s"
+
+[profile.release]
+codegen-units = 1 # LLVM can perform better optimizations using a single thread
+debug = 2         # prefer slower builds but better debugging experience
+lto = 'fat'
+opt-level = 3
