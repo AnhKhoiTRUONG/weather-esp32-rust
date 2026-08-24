@@ -2,6 +2,11 @@
 
 Why? Because weather station is cool, Rust is cool and E-ink display is cool
 
+![The result](/display.jpg)
+
+- It updates every 10 minutes
+- A nice icon for every weather (rainy, sunny, thunderstorm, ...)
+
 ### What you need for this project?
 - An ESP32 module (that I bought on Aliexpress)
 - A WeAct 2.13" Epaper Module
