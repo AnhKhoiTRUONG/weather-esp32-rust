@@ -36,7 +36,7 @@ impl WeatherApi {
     pub fn new(wifi: Stack<'static>, tls_seed: u64) -> Self {
         let mut url = String::new();
 
-        url.push_str("https://api.openweathermap.org/data/2.5/weather?lat=44.34&lon=10.99&units=metric&appid=").unwrap();
+        url.push_str("https://api.openweathermap.org/data/2.5/weather?lat=45.19&lon=5.72&units=metric&appid=").unwrap();
         url.push_str(API).unwrap();
         Self {
             wifi,
@@ -46,23 +46,21 @@ impl WeatherApi {
     }
 
     pub async fn access_website(&self) -> WeatherResponse {
-        let tcp_client = TcpClient::new(
-            self.wifi,
-            mk_static!(
-            TcpClientState<1, 16384, 4096>, // 16KB RX, 4KB TX
-                TcpClientState::<1, 16384, 4096>::new()
-                        ),
-        );
-        let dns_client = DnsSocket::new(self.wifi);
+        let mut rx_buffer = [0; 4096 * 2];
+        let mut tx_buffer = [0; 4096 * 2];
 
         let tls_config = TlsConfig::new(
             self.tls_seed,
-            mk_static!([u8; 16384], [0; 16384]),
-            mk_static!([u8; 4096], [0; 4096]),
-            TlsVerify::None,
+            &mut rx_buffer,
+            &mut tx_buffer,
+            reqwless::client::TlsVerify::None,
         );
 
-        let mut client = HttpClient::new_with_tls(&tcp_client, &dns_client, tls_config);
+        let dns = DnsSocket::new(self.wifi);
+        let tcp_state = TcpClientState::<1, 4096, 4096>::new();
+        let tcp = TcpClient::new(self.wifi, &tcp_state);
+
+        let mut client = HttpClient::new_with_tls(&tcp, &dns, tls_config);
         info!("Making HTTPS request");
 
         let mut rx_buf = [0u8; 4096];

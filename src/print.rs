@@ -1,4 +1,5 @@
 use embassy_time::{Delay, Duration, Timer};
+use embedded_graphics::primitives::{Line, PrimitiveStyle};
 use embedded_hal_bus::spi::ExclusiveDevice;
 use esp_hal::gpio::{Input, InputConfig, Level, Output, OutputConfig, Pull};
 use esp_println as _;
@@ -13,7 +14,7 @@ use epd_waveshare::prelude::{Color, WaveshareDisplay};
 
 // embedded graphics
 use embedded_graphics::mono_font::MonoTextStyleBuilder;
-use embedded_graphics::mono_font::ascii::FONT_10X20;
+use embedded_graphics::mono_font::iso_8859_1::FONT_10X20;
 use embedded_graphics::prelude::*;
 // use embedded_graphics::primitives::{Circle, PrimitiveStyle, PrimitiveStyleBuilder};
 use embedded_graphics::text::{Baseline, Text};
@@ -88,19 +89,28 @@ impl DashBoard {
 
     pub async fn draw_date(&mut self, dt: DateTime<Utc>) {
         info!("Draw date");
-        info!("Date: {:04}-{:02}-{:02}", dt.year(), dt.month(), dt.day());
-        let mut text: String<50> = String::new();
-        write!(
-            &mut text,
+        info!(
             "Date: {:02}-{:02}-{:04}\nTime: {:02}:{:02}",
             dt.day(),
             dt.month(),
             dt.year(),
             dt.hour(),
             dt.minute(),
+        );
+        let mut text: String<50> = String::new();
+        write!(
+            &mut text,
+            "Date: {:02} {:02} {:04}",
+            dt.day(),
+            month_name(dt.month()),
+            dt.year()
         )
         .unwrap();
         draw_text(&mut self.display, text.as_str(), 10, 0);
+        Line::new(Point::new(0, 22), Point::new(260, 22))
+            .into_styled(PrimitiveStyle::with_stroke(Color::Black, 5))
+            .draw(&mut self.display)
+            .unwrap();
     }
 
     pub async fn draw_temp(&mut self, temps: WeatherData) {
@@ -110,11 +120,11 @@ impl DashBoard {
 
         write!(
             &mut text,
-            "Temperature: {}\nFeels like: {}",
+            "Temperature: {}°C\nFeels like: {}°C",
             temps.temp, temps.feels_like
         )
         .unwrap();
-        draw_text(&mut self.display, text.as_str(), 10, 40);
+        draw_text(&mut self.display, text.as_str(), 10, 24);
     }
 }
 
@@ -127,4 +137,22 @@ fn draw_text(display: &mut Display2in13, text: &str, x: i32, y: i32) {
     Text::with_baseline(text, Point::new(x, y), text_style, Baseline::Top)
         .draw(display)
         .unwrap();
+}
+
+fn month_name(month: u32) -> &'static str {
+    match month {
+        1 => "Jan",
+        2 => "Feb",
+        3 => "Mar",
+        4 => "Apr",
+        5 => "May",
+        6 => "Jun",
+        7 => "Jul",
+        8 => "Aug",
+        9 => "Sep",
+        10 => "Oct",
+        11 => "Nov",
+        12 => "Dec",
+        _ => "Err",
+    }
 }
