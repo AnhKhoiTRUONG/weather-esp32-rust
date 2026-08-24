@@ -1,7 +1,6 @@
 ## Weather station in Rust
 
-This is a quick recap on the my first embedded project in Rust
-Why Rust? Frankly saying, I learned Rust in school and I found it's cool so why not. And everybody do embedded in C/C++ so I just try to be a little bit different.
+Why? Because weather station is cool, Rust is cool and E-ink display is cool
 
 ### What you need for this project?
 - An ESP32 module (that I bought on Aliexpress)
