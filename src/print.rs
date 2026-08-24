@@ -1,8 +1,10 @@
 use embassy_time::{Delay, Duration, Timer};
+use embedded_graphics::pixelcolor::BinaryColor;
 use embedded_graphics::primitives::{Line, PrimitiveStyle};
 use embedded_hal_bus::spi::ExclusiveDevice;
-use esp_hal::gpio::{Input, InputConfig, Level, Output, OutputConfig, Pull};
+use esp_hal::gpio::{Input, Output};
 use esp_println as _;
+use tinybmp::Bmp;
 
 // SPI
 use esp_hal::spi::master::Spi;
@@ -21,7 +23,8 @@ use embedded_graphics::text::{Baseline, Text};
 
 use embassy_net::Stack;
 
-use crate::api::{WeatherApi, WeatherData, WeatherResponse};
+use crate::api::{ConditionCode, WeatherApi, WeatherData, WeatherResponse};
+use crate::icon::ICONS;
 
 use chrono::{DateTime, Datelike, Timelike, Utc};
 use core::fmt::Write;
@@ -78,6 +81,7 @@ impl DashBoard {
 
         self.draw_date(data.dt).await;
         self.draw_temp(data.main).await;
+        self.draw_weather_icon(&data.weather[0].id).await;
 
         self.epd
             .update_and_display_frame(&mut self.spi_dev, self.display.buffer(), &mut Delay)
@@ -100,13 +104,13 @@ impl DashBoard {
         let mut text: String<50> = String::new();
         write!(
             &mut text,
-            "Date: {:02} {:02} {:04}",
+            "{:02} {:02} {:04}",
             dt.day(),
             month_name(dt.month()),
             dt.year()
         )
         .unwrap();
-        draw_text(&mut self.display, text.as_str(), 10, 0);
+        draw_text(&mut self.display, text.as_str(), 60, 0);
         Line::new(Point::new(0, 22), Point::new(260, 22))
             .into_styled(PrimitiveStyle::with_stroke(Color::Black, 5))
             .draw(&mut self.display)
@@ -118,13 +122,31 @@ impl DashBoard {
 
         let mut text: String<50> = String::new();
 
-        write!(
-            &mut text,
-            "Temperature: {}°C\nFeels like: {}°C",
-            temps.temp, temps.feels_like
-        )
-        .unwrap();
-        draw_text(&mut self.display, text.as_str(), 10, 24);
+        write!(&mut text, "{}°C", temps.temp).unwrap();
+        draw_text(&mut self.display, text.as_str(), 97, 45);
+    }
+
+    pub async fn draw_weather_icon(&mut self, weather_code: &ConditionCode) {
+        let icon_file = ConditionCode::icon(weather_code);
+        let bmp_data = ICONS.iter().find(|item| item.0 == icon_file).unwrap().1;
+        let bmp = Bmp::<'_, BinaryColor>::from_slice(bmp_data).unwrap();
+        //Trait bound or error or sum is killing me so lemme just transform the color
+        let offset = Point::new(15, 30);
+
+        for Pixel(point, color) in bmp.pixels() {
+            let display_color: Color = match color.into() {
+                Color::Black => Color::White,
+                Color::White => Color::Black,
+            };
+            Pixel(point + offset, display_color)
+                .draw(&mut self.display)
+                .unwrap();
+        }
+
+        Line::new(Point::new(80, 30), Point::new(80, 70))
+            .into_styled(PrimitiveStyle::with_stroke(Color::Black, 5))
+            .draw(&mut self.display)
+            .unwrap();
     }
 }
 

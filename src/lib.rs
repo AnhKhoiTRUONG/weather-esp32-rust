@@ -1,5 +1,6 @@
 #![no_std]
 pub mod api;
+pub mod icon;
 pub mod print;
 pub mod wifi;
 
