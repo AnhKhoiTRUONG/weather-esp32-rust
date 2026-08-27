@@ -71,9 +71,10 @@ serde_repr = "0.1"
 serde-json-core = "0.6.0"
 embedded-hal-bus = "0.3.0"
 embedded-graphics = "0.8.2"
-epd-waveshare = "0.6.0"
+epd-waveshare = { path = "../epd-waveshare/" }
 dotenvy_macro = "0.15"
 tinybmp = { version = "0.7.0" }
+u8g2-fonts = "0.8.0"
 # For fine tuning these settings, please refer to https://doc.rust-lang.org/cargo/reference/profiles.html
 [profile.dev]
 # The default debug profile is too slow and too big for resource-constrained devices.

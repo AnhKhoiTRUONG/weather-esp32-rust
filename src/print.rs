@@ -1,10 +1,14 @@
-use embassy_time::{Delay, Duration, Timer};
-use embedded_graphics::pixelcolor::BinaryColor;
-use embedded_graphics::primitives::{Line, PrimitiveStyle};
-use embedded_hal_bus::spi::ExclusiveDevice;
 use esp_hal::gpio::{Input, Output};
 use esp_println as _;
+
+// for render bmp images
 use tinybmp::Bmp;
+
+// import fonts
+use u8g2_fonts::{
+    FontRenderer, fonts,
+    types::{FontColor, HorizontalAlignment, VerticalPosition},
+};
 
 // SPI
 use esp_hal::spi::master::Spi;
@@ -15,20 +19,23 @@ use epd_waveshare::graphics::DisplayRotation;
 use epd_waveshare::prelude::{Color, WaveshareDisplay};
 
 // embedded graphics
-use embedded_graphics::mono_font::MonoTextStyleBuilder;
+use embassy_time::{Delay, Duration, Timer};
+use embedded_graphics::image::Image;
 use embedded_graphics::mono_font::iso_8859_1::FONT_10X20;
+use embedded_graphics::mono_font::{MonoFont, MonoTextStyleBuilder};
+use embedded_graphics::pixelcolor::BinaryColor;
 use embedded_graphics::prelude::*;
-// use embedded_graphics::primitives::{Circle, PrimitiveStyle, PrimitiveStyleBuilder};
+use embedded_graphics::primitives::{Line, PrimitiveStyle};
 use embedded_graphics::text::{Baseline, Text};
+use embedded_hal_bus::spi::ExclusiveDevice;
 
 use embassy_net::Stack;
 
 use crate::api::{ConditionCode, WeatherApi, WeatherData, WeatherResponse};
 use crate::icon::ICONS;
 
-use chrono::{DateTime, Datelike, Timelike, Utc};
+use chrono::{Datelike, Timelike};
 use core::fmt::Write;
-// use core::time::Duration;
 use heapless::String;
 
 use defmt::info;
@@ -79,9 +86,10 @@ impl DashBoard {
             .unwrap();
         Timer::after(Duration::from_secs(5)).await;
 
-        self.draw_date(data.dt).await;
-        self.draw_temp(data.main).await;
+        self.draw_date_place(&data).await;
+        self.draw_temp(&data.main).await;
         self.draw_weather_icon(&data.weather[0].id).await;
+        self.draw_wind_cloud(&data).await;
 
         self.epd
             .update_and_display_frame(&mut self.spi_dev, self.display.buffer(), &mut Delay)
@@ -91,68 +99,86 @@ impl DashBoard {
         self.epd.sleep(&mut self.spi_dev, &mut Delay).unwrap();
     }
 
-    pub async fn draw_date(&mut self, dt: DateTime<Utc>) {
+    pub async fn draw_date_place(&mut self, data: &WeatherResponse) {
         info!("Draw date");
         info!(
-            "Date: {:02}-{:02}-{:04}\nTime: {:02}:{:02}",
-            dt.day(),
-            dt.month(),
-            dt.year(),
-            dt.hour(),
-            dt.minute(),
+            "Date: {:02}-{:02}-{:04}\nTime: {:02}:{:02}         {}",
+            data.dt.day(),
+            data.dt.month(),
+            data.dt.year(),
+            data.dt.hour(),
+            data.dt.minute(),
+            data.name
         );
         let mut text: String<50> = String::new();
         write!(
             &mut text,
-            "{:02} {:02} {:04}",
-            dt.day(),
-            month_name(dt.month()),
-            dt.year()
+            "{:02} {:02} {:04}      {}",
+            data.dt.day(),
+            month_name(data.dt.month()),
+            data.dt.year(),
+            data.name
         )
         .unwrap();
-        draw_text(&mut self.display, text.as_str(), 60, 0);
+        draw_text(&mut self.display, text.as_str(), 0, 0, &FONT_10X20);
         Line::new(Point::new(0, 22), Point::new(260, 22))
             .into_styled(PrimitiveStyle::with_stroke(Color::Black, 5))
             .draw(&mut self.display)
             .unwrap();
     }
 
-    pub async fn draw_temp(&mut self, temps: WeatherData) {
+    pub async fn draw_temp(&mut self, temps: &WeatherData) {
+        let font = FontRenderer::new::<fonts::u8g2_font_spleen32x64_me>();
         info!("Draw temp");
 
         let mut text: String<50> = String::new();
 
         write!(&mut text, "{}°C", temps.temp).unwrap();
-        draw_text(&mut self.display, text.as_str(), 97, 45);
+        font.render_aligned(
+            format_args!("{:.0}°", temps.temp),
+            self.display.bounding_box().center() + Point::new(-5, 16),
+            VerticalPosition::Baseline,
+            HorizontalAlignment::Left,
+            FontColor::Transparent(BinaryColor::Off),
+            &mut self.display.color_converted(),
+        )
+        .unwrap();
     }
 
     pub async fn draw_weather_icon(&mut self, weather_code: &ConditionCode) {
         let icon_file = ConditionCode::icon(weather_code);
         let bmp_data = ICONS.iter().find(|item| item.0 == icon_file).unwrap().1;
         let bmp = Bmp::<'_, BinaryColor>::from_slice(bmp_data).unwrap();
-        //Trait bound or error or sum is killing me so lemme just transform the color
-        let offset = Point::new(15, 30);
+        let image = Image::new(&bmp, Point::new(15, 35));
+        image.draw(&mut self.display.color_converted()).unwrap();
+    }
 
-        for Pixel(point, color) in bmp.pixels() {
-            let display_color: Color = match color.into() {
-                Color::Black => Color::White,
-                Color::White => Color::Black,
-            };
-            Pixel(point + offset, display_color)
-                .draw(&mut self.display)
-                .unwrap();
-        }
+    pub async fn draw_wind_cloud(&mut self, data: &WeatherResponse) {
+        let font = FontRenderer::new::<fonts::u8g2_font_8x13B_mf>();
 
-        Line::new(Point::new(80, 30), Point::new(80, 70))
-            .into_styled(PrimitiveStyle::with_stroke(Color::Black, 5))
-            .draw(&mut self.display)
-            .unwrap();
+        info!("Draw wind cloud");
+        info!(
+            "{}\n{}% {} km/h",
+            data.weather[0].description, data.clouds.all, data.wind.speed
+        );
+        font.render_aligned(
+            format_args!(
+                "{}\n{}% {}m/s",
+                data.weather[0].description, data.clouds.all, data.wind.speed
+            ),
+            Point::new(0, 90),
+            VerticalPosition::Top,
+            HorizontalAlignment::Left,
+            FontColor::Transparent(BinaryColor::Off),
+            &mut self.display.color_converted(),
+        )
+        .unwrap();
     }
 }
 
-fn draw_text(display: &mut Display2in13, text: &str, x: i32, y: i32) {
+fn draw_text(display: &mut Display2in13, text: &str, x: i32, y: i32, font_size: &MonoFont) {
     let text_style = MonoTextStyleBuilder::new()
-        .font(&FONT_10X20)
+        .font(font_size)
         .text_color(Color::Black)
         .build();
 

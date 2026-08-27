@@ -13,21 +13,35 @@ use serde_repr::Deserialize_repr;
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct WeatherData {
-    pub temp: f64,
-    pub feels_like: f64,
+    pub temp: f32,
+    pub feels_like: f32,
 }
 
 #[derive(Deserialize, Debug)]
 pub struct WeatherResponse {
     pub weather: Vec<Weather, 1>,
     pub main: WeatherData,
+    pub wind: WindData,
+    pub clouds: CloudData,
     #[serde(with = "chrono::serde::ts_seconds")]
     pub dt: DateTime<Utc>,
+    pub name: String<10>,
 }
 
 #[derive(Deserialize, Debug)]
 pub struct Weather {
     pub id: ConditionCode,
+    pub description: String<20>,
+}
+
+#[derive(Deserialize, Debug)]
+pub struct WindData {
+    pub speed: f32,
+}
+
+#[derive(Deserialize, Debug)]
+pub struct CloudData {
+    pub all: u32,
 }
 
 const API: &str = dotenv!("API");
