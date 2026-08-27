@@ -9,15 +9,16 @@ Why? Because weather station is cool, Rust is cool and E-ink display is cool
 
 ### What you need for this project?
 - An ESP32 module (that I bought on Aliexpress)
-- A WeAct 2.13" Epaper Module
-Simple as that, I havent done much embedded projects...
+- A WeAct 2.13" Epaper Module (also on Aliexpress)
 
 
 ### Wifi and API
-- So here I use the Openweather API so to run it so you need to put a `.env` file in the main directory
+- So here I use the ![Openweather API](https://openweathermap.org/) so to run it so you need to put a `.env` file in the main directory
 ```conf
 SSID = 
 PASS = 
 API = 
 ```
 
+### Dependencies
+This project use the `epd-waveshare` crate, but we have some small problems because our display is not a Waveshare display so I made a few changes in the `epd-waveshare`, so u need to clone for it to work.
