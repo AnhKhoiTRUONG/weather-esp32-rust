@@ -21,4 +21,4 @@ API =
 ```
 
 ### Dependencies
-This project use the `epd-waveshare` crate, but we have some small problems because our display is not a Waveshare display so I made a few changes in the `epd-waveshare`, so u need to clone for it to work.
+This project use the `epd-waveshare` crate, but we have some small problems because our display is not a Waveshare display so I made a few changes in the `epd-waveshare`, so u need to clone this ![fork](https://github.com/AnhKhoiTRUONG/epd-waveshare.git) for it to work.
